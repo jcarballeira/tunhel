@@ -269,7 +269,9 @@ void cylinderModel_normals (pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) //Cylinde
 
 
 bool cloudSubset(sensor_msgs::PointCloud2ConstPtr cld_msg, Mat im_scan, Mat im_msg, depth_deco::ROI_identifier ROI_scan, depth_deco::ROI_identifier ROI_msg, int hole_id) //Point cloud hole segmentation and publishing (hole and surroundings)
-{   bool fp=false;
+{
+
+    bool fp=false;
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ROI (new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_hole (new pcl::PointCloud<pcl::PointXYZ>);
@@ -911,10 +913,12 @@ int main (int argc, char** argv)
         ros::NodeHandle nh;
         centersFile.open("/home/jcl/Matlab2017b/DE_cylinder_modelling/centers.csv");
 
+
+
         // Create a ROS subscriber for the input point cloud
-        ros::Subscriber sub = nh.subscribe ("/kinect2/sd/image_depth", 1, depth_cb);
+        ros::Subscriber sub = nh.subscribe ("/camera/depth/image_rect_raw", 1, depth_cb);
         // Create a ROS subscriber for the input point cloud
-        ros::Subscriber sub2 = nh.subscribe ("/kinect2/hd/points", 1, cloud_cb);
+        ros::Subscriber sub2 = nh.subscribe ("/camera/depth/color/points", 1, cloud_cb);
         // Create a ROS publisher for each hole ROI identifier
         pub_ROIlocation = nh.advertise<depth_deco::ROI_identifier> ("ROI_location", 1);
         // Create a ROS publisher for the ROI cloud
@@ -931,4 +935,6 @@ int main (int argc, char** argv)
         pub_CylModel = nh.advertise<visualization_msgs::Marker> ("CylinderModel", 1);
         // Spin
         ros::spin ();
+
+
 }

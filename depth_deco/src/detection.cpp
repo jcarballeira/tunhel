@@ -21,6 +21,10 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include<ctime>
+#include<stdio.h>
+#include<stdlib.h>
+#include <unistd.h>
 
 //OpenCV
 #include <opencv2/highgui/highgui.hpp>
@@ -103,9 +107,11 @@ PointCloud::Ptr show_prev (new PointCloud);
 
 Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity ();
 int x=0;
-int nubes_a_analizar= 30;
+int nubes_a_analizar;
 bool hole_detection=true;
-bool directo=false;
+bool directo=true;
+std::string frame;
+ofstream centersFile;
 
 ros::Publisher pub;
 ros::Publisher pub_ROIlocation;
@@ -254,7 +260,9 @@ Eigen::Matrix4f pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Pt
 
 Point3d cloudSubset(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, Mat im_scan, Mat im_msg, depth_deco::ROI_identifier ROI_scan, depth_deco::ROI_identifier ROI_msg, int hole_id) //Point cloud hole segmentation and publishing (hole and surroundings)
 {
-    //bool fp=false;
+
+    std::cerr << "Dentro Inside" << endl;
+    bool fp=false;
     Point3d centre;
     //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_ROI (new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -331,17 +339,17 @@ Point3d cloudSubset(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, Mat im_scan, M
 
     sensor_msgs::PointCloud2 cloud_ROI_msg;
     pcl::toROSMsg (*cloud_ROI, cloud_ROI_msg);
-    cloud_ROI_msg.header.frame_id = "kinect2_ir_optical_frame";
+    cloud_ROI_msg.header.frame_id = frame;
     pub_ROIcloud.publish (cloud_ROI_msg);
 
     sensor_msgs::PointCloud2 cloud_Hole_msg;
     pcl::toROSMsg (*cloud_hole, cloud_Hole_msg);
-    cloud_Hole_msg.header.frame_id = "kinect2_ir_optical_frame";
+    cloud_Hole_msg.header.frame_id = frame;
     pub_HoleCloud.publish (cloud_Hole_msg);
 
     sensor_msgs::PointCloud2 cloud_Scanm_msg;
     pcl::toROSMsg (*cloud_scanm, cloud_Scanm_msg);
-    cloud_Scanm_msg.header.frame_id = "kinect2_ir_optical_frame";
+    cloud_Scanm_msg.header.frame_id = frame;
     pub_ScanmCloud.publish (cloud_Scanm_msg);
 
     //cylinderModel_normals(cloud_ROI);
@@ -349,7 +357,7 @@ Point3d cloudSubset(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, Mat im_scan, M
 
     sensor_msgs::PointCloud2 cloud_msg;
     pcl::toROSMsg (*cloud, cloud_msg);	
-    cloud_ROI_msg.header.frame_id = "kinect2_ir_optical_frame";
+    cloud_ROI_msg.header.frame_id = frame;
     pub_Cloud.publish (cloud_msg);
 
     double z;
@@ -380,71 +388,68 @@ Point3d cloudSubset(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, Mat im_scan, M
 
 
 
-/*
+    /// parte para guardar las distintas nubes en formato .pcd
     if ((!isnan(cloud_ROI->points[ROI_msg.height*ROI_msg.width/2].x))&&(!isnan(cloud_ROI->points[ROI_msg.height*ROI_msg.width/2].y))&&(!isnan(minz))){
 	
-
+        centersFile << center_x << "," << center_y << "," << center_z << endl;
         //Writing whole cloud .pcd
         std::ostringstream os;
         os << "cloud" << hole_id+1 << ".pcd";
         string va=os.str();
         const char *filenam=va.c_str();
-				cout << "NOMBRE FICHERO: " << filenam << endl;
+
         pcl::io::savePCDFileASCII (filenam, *cloud);
-				cout << "DESPUES DE PCD" << endl;
 
         //Writing rest cloud .pcd
         std::ostringstream osv;
         osv << "rest" << hole_id+1 << ".pcd";
         string varv=osv.str();
         const char *filenamev=varv.c_str();
-				cout << "NOMBRE FICHERO: " << filenam << endl;
+
         pcl::io::savePCDFileASCII (filenamev, *cloud_rest);
-				cout << "DESPUES DE PCD2" << endl;
 
         //Writing hole cloud .pcd
         std::ostringstream oss;
         oss << "hole" << hole_id+1 << ".pcd";
         string var=oss.str();
         const char *filename=var.c_str();
-				cout << "NOMBRE FICHERO: " << filenam << endl;
+
         pcl::io::savePCDFileASCII (filename, *cloud_hole);
-				cout << "DESPUES DE PCD3" << endl;
+
         //std::cerr << "Saved " << cloud_hole->points.size () << " data  points to hole.pcd." << std::endl;
         std::cerr << "Hole points: " << cloud_hole->points.size() << endl;
 
-	/Filtering ROI cloud to extract entrance wall rests
+        /*//Filtering ROI cloud to extract entrance wall rests
 	pcl::PassThrough<pcl::PointXYZ> pass;
-    	pass.setInputCloud (cloud_ROI);
+        pass.setInputCloud (*cloud_ROI);
     	pass.setFilterFieldName ("z");
     	pass.setFilterLimits (minz+0.01, maxz-0.015);
     	//pass.setFilterLimitsNegative (true);
     	pass.filter (*cloud_ROI);
-	
+        */
 	//Writing ROI cloud .pcd
         std::ostringstream ost;
         ost << "roi" << hole_id+1 << ".pcd";
         string vart=ost.str();
         const char *filenamet=vart.c_str();
-				cout << "NOMBRE FICHERO: " << filenam << endl;
+
         pcl::io::savePCDFileASCII (filenamet, *cloud_ROI);
-				cout << "DESPUES DE PCD4" << endl;
+
 
         //Writing sacn matching cloud .pcd
         std::ostringstream osz;
         osz << "scanm" << hole_id+1 << ".pcd";
         string varz=osz.str();
         const char *filenamez=varz.c_str();
-				cout << "NOMBRE FICHERO: " << filenam << endl;
+
         pcl::io::savePCDFileASCII (filenamez, *cloud_scanm);
-				cout << "DESPUES DE PCD5" << endl;
 
         
     }
     else {
 
 	std::cerr << "Hole discarded " << endl;
-        fp=true; } */
+        fp=true; }
 
     //std::cout << "__________________________"<<endl<<endl;
 
@@ -644,8 +649,8 @@ std::vector<KeyPoint> BlobDetection(Mat image, double dist){
   params.filterByArea = true;
   //params.minArea = 20;
   //params.maxArea = 500;
-  params.minArea = -7*dist/1000+24;
-  params.maxArea = 195.4*(sin(dist/1000-3.1416))+18.34*(pow((dist/1000-10),2))-846;
+  params.minArea = -7*dist/1200+24;
+  params.maxArea = 195.4*(sin(dist/1200-3.1416))+18.34*(pow((dist/1000-10),2))-846;
 
   // Filter by Circularity
   params.filterByCircularity = false;
@@ -907,7 +912,9 @@ for (int c=0; c<depthlist.size();c++){
 
        }
 
-
+  centersFile.close();
+  cout << "Analizado agujero. Pulsar tecla para continuar" << endl;
+  waitKey(0);
   //std::cout << "__________________________"<< endl;
   //std::cout << "Found holes:" <<centers_indcloud.size() << std::endl<<std::endl;
   //std::cout << "__________________________"<< endl;
@@ -1125,7 +1132,7 @@ for (int c=0; c<depthlist.size();c++){
 
 	    pcl::toROSMsg(*show,cloud_tr);
 	    std_msgs::Header h = cloud_tr.header;
-            cloud_tr.header.frame_id = "kinect2_ir_optical_frame";
+            cloud_tr.header.frame_id = frame;
 	    pub.publish (cloud_tr);
 
 	    cout << "Nube final tiene " << show->size() << " puntos" << endl;
@@ -1133,7 +1140,7 @@ for (int c=0; c<depthlist.size();c++){
 
 	    pcl::PointCloud<pcl::PointXYZRGB>::Ptr result_pcd (new pcl::PointCloud<pcl::PointXYZRGB>);
 	    copyPointCloud (*show, *result_pcd);
-            pcl::io::savePCDFile<pcl::PointXYZRGB>("/home/carba/Documents/Archivos scanmatching mina/result.pcd", *result_pcd);
+            pcl::io::savePCDFile<pcl::PointXYZRGB>("result.pcd", *result_pcd);
 
 	    cout << endl;
             cout << "    -Global Transform: " << endl;
@@ -1146,7 +1153,7 @@ for (int c=0; c<depthlist.size();c++){
    /*sensor_msgs::PointCloud2 cloud_inicial;
    pcl::toROSMsg(*cloud,cloud_inicial);
    std_msgs::Header h = cloud_inicial.header;
-   cloud_inicial.header.frame_id = "kinect2_ir_optical_frame";
+   cloud_inicial.header.frame_id = frame;
    pub.publish (cloud_inicial);*/
 
 
@@ -1167,7 +1174,7 @@ for (int j=0; j<acc_centres.size(); j++){
         visualization_msgs::Marker loc_vector;
         geometry_msgs::Point initial_point,end_point;
 
-        loc_vector.header.frame_id = "kinect2_ir_optical_frame";
+        loc_vector.header.frame_id = frame;
         loc_vector.header.stamp = ros::Time();
         loc_vector.id = j;
         loc_vector.type = visualization_msgs::Marker::ARROW;
@@ -1281,6 +1288,7 @@ int main (int argc, char** argv){
 
   ros::init (argc, argv, "detection");
   ros::NodeHandle n;
+  centersFile.open("/home/jcl/Documents/Rosbags/centers.csv");
 
   // Create a ROS publisher for each hole ROI identifier
         pub = n.advertise<sensor_msgs::PointCloud2> ("cloud_tr",1); //Publish cloud transformed
@@ -1303,15 +1311,39 @@ int main (int argc, char** argv){
 
 
  //----------cargar desde topic-------
-  /*
-  ros::Subscriber sub = n.subscribe ("/kinect2/sd/image_depth", 1, depth_cb);
-        // Create a ROS subscriber for the input point cloud
-  ros::Subscriber sub2 = n.subscribe ("/kinect2/hd/points", 1, cloud_cb);
-  */
+
+
+  int camera_sel;
+  ros::Subscriber sub;
+  ros::Subscriber sub2;
+
+  while (camera_sel!=0 && camera_sel!=1){
+  cout << "Select camera. Realsense = 0, Kinect = 1" << endl;
+  cin >> camera_sel;
+  }
+
+  if (camera_sel==1){
+      cout << "inside" << camera_sel << endl;
+      sub = n.subscribe ("/kinect2/sd/image_depth", 1, depth_cb);
+              // Create a ROS subscriber for the input point cloud
+      sub2 = n.subscribe ("/kinect2/hd/points", 1, cloud_cb);
+      frame="kinect2_ir_optical_frame";
+
+  }
+  else if (camera_sel==0){
+      sub = n.subscribe ("/camera/depth/image_rect_raw", 1, depth_cb);
+            // Create a ROS subscriber for the input point cloud
+      sub2 = n.subscribe ("/camera/depth/color/points", 1, cloud_cb);
+      frame="camera_depth_frame";
+  }
+
+  cout << "Nubes a analizar:" << endl;
+  cin >> nubes_a_analizar;
+
 
 //-------------cargar desde carpeta
 
-      cout << endl;
+      /*cout << endl;
       cout << "Cargando los archivos..." << endl;
       cout << "---------------------------" << endl;
 
@@ -1341,7 +1373,7 @@ int main (int argc, char** argv){
 //Check sizes
   cout << clouds.size() << " clouds loaded " << endl;
   cout << depthlist.size() << " depth images loaded " << endl;
-  processing();
+  processing();*/
 //-----------------------------------------------
 
 

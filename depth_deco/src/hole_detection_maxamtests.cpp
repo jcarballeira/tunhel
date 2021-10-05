@@ -886,7 +886,7 @@ int main (int argc, char** argv)
         // Initialize ROS
         ros::init (argc, argv, "Hole_detection_node");
         ros::NodeHandle nh;
-        centersFile.open("/home/jcl/Matlab2017b/DE_cylinder_modelling/centers.csv");
+        centersFile.open("/home/jcl/catkin_ws/centers.csv");
 
         // Create a ROS subscriber for the input point cloud
         ros::Subscriber sub = nh.subscribe ("/kinect2/sd/image_depth", 1, depth_cb);
